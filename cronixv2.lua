@@ -1,4 +1,4 @@
-task.wait(4.5)
+task.wait(3)
 
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
@@ -12,9 +12,9 @@ local FRAME_BASE_HEIGHT = 206
 local TELEPORT_COOLDOWN = 0.25
 local SAVE_COOLDOWN = 0.35
 local MIN_RECOMMENDED_SPEED = 1
-local MAX_RECOMMENDED_SPEED = 100
-local FLASHTIME_WARNING = "Do not use extra speed with FlashTime mode or youll be in risk."
-local FLASHTIME_DISCLAIMER = "Disclaimer: " .. FLASHTIME_WARNING
+local MAX_RECOMMENDED_SPEED = 50
+local FLASHTIME_WARNING = "Do not use absurd numbers or youll be in risk."
+local FLASHTIME_DISCLAIMER = "IMPORTANT: " .. FLASHTIME_WARNING
 
 local COLORS = {
 	Frame = Color3.fromRGB(15, 15, 15),
@@ -329,7 +329,7 @@ cometButton.MouseButton1Click:Connect(function()
 	teleportToAdminAbuse("Comet", "Comet TP")
 end)
 
-local riftButton = createButton(dropdownContent, "TP TO RIFT", 32)
+local riftButton = createButton(dropdownContent, "TP TO VORTEX RIFT", 32)
 riftButton.LayoutOrder = 2
 riftButton.MouseButton1Click:Connect(function()
 	teleportToAdminAbuse("Rift", "Rift TP")
@@ -338,7 +338,7 @@ end)
 local section = createLabel(dropdownContent, "Find suit", 18, Enum.Font.GothamBold, 12, COLORS.Section)
 section.LayoutOrder = 3
 
-local suitButton = createButton(dropdownContent, "TP TO SUIT", 32)
+local suitButton = createButton(dropdownContent, "TP TO VORTEX SUIT", 32)
 suitButton.LayoutOrder = 4
 suitButton.MouseButton1Click:Connect(function()
 	teleportToAdminAbuse("RiftsRig", "Find suit")
@@ -360,7 +360,7 @@ end)
 
 local function setDropdownState(state)
 	expanded = state
-	dropdownButton.Text = expanded and "Admin Abuse  ▾" or "Admin Abuse  ▸"
+	dropdownButton.Text = expanded and "Admin Abuse  -" or "Admin Abuse  -"
 	refreshContainerHeight()
 end
 
