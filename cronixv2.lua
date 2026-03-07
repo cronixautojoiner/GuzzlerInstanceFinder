@@ -1,29 +1,26 @@
--- Block UpdateSpeed Remote (Engine Level Hook)
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UpdateSpeed = ReplicatedStorage:WaitForChild("Events", 5):WaitForChild("UpdateSpeed", 5)
-
-local gmt = getrawmetatable(game)
-local oldNamecall = gmt.__namecall
-setreadonly(gmt, false)
-
-gmt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    -- This checks if the remote being fired is UpdateSpeed
-    if self == UpdateSpeed and (method == "FireServer" or method == "fireServer") then
-        return -- Completely drops the call; SimpleSpy won't see it
-    end
-    return oldNamecall(self, ...)
-end)
-
-setreadonly(gmt, true)
-
--- UI and Functionality Script
-task.wait(1)
+task.wait(3)
 
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
+
+local REPLICATED_STORAGE = cloneref(game:GetService("ReplicatedStorage"))
+local UpdateSpeed = REPLICATED_STORAGE:WaitForChild("Events"):WaitForChild("UpdateSpeed")
+
+local old_namecall
+old_namecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
+	local self = ...
+	local method = string.lower(getnamecallmethod())
+
+	if typeof(self) == "Instance" and self:IsA("RemoteEvent") then
+		if method == "fireserver" and self == UpdateSpeed then
+			return
+		end
+	end
+
+	return old_namecall(...)
+end))
 
 local LOCAL_PLAYER = Players.LocalPlayer
 local UI_NAME = "Cronix_Flashpoint_UI"
@@ -56,25 +53,38 @@ local function toast(title, text, duration)
 end
 
 local function safeDestroyExistingUi()
-	local oldUi = CoreGui:FindFirstChild(UI_NAME)
-	if oldUi then
-		oldUi:Destroy()
+	local old = CoreGui:FindFirstChild(UI_NAME)
+	if old then
+		old:Destroy()
 	end
 end
+
 safeDestroyExistingUi()
 
-local cachedRU, cachedAdminAbuse, cachedCharacter, cachedHRP
+local cachedRU
+local cachedAdminAbuse
+local cachedCharacter
+local cachedHRP
 
 local function resolveRebirthUpgrades()
-	if cachedRU and cachedRU.Parent then return cachedRU end
+	if cachedRU and cachedRU.Parent then
+		return cachedRU
+	end
+
 	local playerData = LOCAL_PLAYER:FindFirstChild("PlayerData") or LOCAL_PLAYER:WaitForChild("PlayerData", 5)
-	if not playerData then return nil end
+	if not playerData then
+		return nil
+	end
+
 	cachedRU = playerData:FindFirstChild("RebirthUpgrades") or playerData:WaitForChild("RebirthUpgrades", 5)
 	return cachedRU
 end
 
 local function resolveAdminAbuse()
-	if cachedAdminAbuse and cachedAdminAbuse.Parent then return cachedAdminAbuse end
+	if cachedAdminAbuse and cachedAdminAbuse.Parent then
+		return cachedAdminAbuse
+	end
+
 	cachedAdminAbuse = Workspace:FindFirstChild("AdminAbuse") or Workspace:FindFirstChild("AdminAbuse", true)
 	return cachedAdminAbuse
 end
@@ -85,8 +95,15 @@ local function resolveHRP()
 		cachedCharacter = character
 		cachedHRP = nil
 	end
-	if not character then return nil end
-	if cachedHRP and cachedHRP.Parent == character then return cachedHRP end
+
+	if not character then
+		return nil
+	end
+
+	if cachedHRP and cachedHRP.Parent == character then
+		return cachedHRP
+	end
+
 	cachedHRP = character:FindFirstChild("HumanoidRootPart")
 	return cachedHRP
 end
@@ -97,6 +114,7 @@ local function applyAllRebirthValues(value)
 		toast("Cronix", "RebirthUpgrades NOT FOUND", 2)
 		return false, 0
 	end
+
 	local updatedCount = 0
 	for _, child in rebirthUpgrades:GetChildren() do
 		if child:IsA("IntValue") and child.Value ~= value then
@@ -104,37 +122,55 @@ local function applyAllRebirthValues(value)
 			updatedCount = updatedCount + 1
 		end
 	end
+
 	return true, updatedCount
 end
 
 local function getObjectCFrame(object)
-	if object:IsA("Model") then return object:GetPivot() end
-	if object:IsA("BasePart") then return object.CFrame end
+	if object:IsA("Model") then
+		return object:GetPivot()
+	end
+	if object:IsA("BasePart") then
+		return object.CFrame
+	end
 	return nil
 end
 
 local lastTeleport = 0
 local function teleportToAdminAbuse(targetName, label)
 	local now = os.clock()
-	if now - lastTeleport < TELEPORT_COOLDOWN then return end
-	lastTeleport = now
-	
-	local adminAbuse = resolveAdminAbuse()
-	if not adminAbuse then toast(label or "Admin Abuse", "AdminAbuse NOT FOUND", 2) return end
-	
-	local target = adminAbuse:FindFirstChild(targetName)
-	if not target then toast(label or "Admin Abuse", targetName .. " NOT FOUND", 2) return end
-	
-	local targetCFrame = getObjectCFrame(target)
-	local hrp = resolveHRP()
-	if targetCFrame and hrp then
-		hrp.CFrame = targetCFrame * CFrame.new(0, 5, 0)
-	else
-		toast(label or "Admin Abuse", "Teleport Failed", 2)
+	if now - lastTeleport < TELEPORT_COOLDOWN then
+		return
 	end
+	lastTeleport = now
+
+	local adminAbuse = resolveAdminAbuse()
+	if not adminAbuse then
+		toast(label or "Admin Abuse", "AdminAbuse NOT FOUND", 2)
+		return
+	end
+
+	local target = adminAbuse:FindFirstChild(targetName)
+	if not target then
+		toast(label or "Admin Abuse", targetName .. " NOT FOUND", 2)
+		return
+	end
+
+	local targetCFrame = getObjectCFrame(target)
+	if not targetCFrame then
+		toast(label or "Admin Abuse", "Target has no valid position", 2)
+		return
+	end
+
+	local hrp = resolveHRP()
+	if not hrp then
+		toast(label or "Admin Abuse", "HRP missing", 2)
+		return
+	end
+
+	hrp.CFrame = targetCFrame * CFrame.new(0, 5, 0)
 end
 
--- UI Construction Helpers
 local function applyCorner(instance, radius)
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, radius or 8)
@@ -189,11 +225,14 @@ local function createInput(parent, placeholder, height)
 end
 
 local function parseSpeed(text)
-	local number = tonumber(string.match(text or "", "^%s*(.-)%s*$"))
-	return number and math.floor(number + 0.5) or nil
+	local trimmed = string.match(text or "", "^%s*(.-)%s*$")
+	local number = tonumber(trimmed)
+	if not number then
+		return nil
+	end
+	return math.floor(number + 0.5)
 end
 
--- Main UI Setup
 local ui = Instance.new("ScreenGui")
 ui.Name = UI_NAME
 ui.IgnoreGuiInset = true
@@ -219,8 +258,10 @@ stroke.Color = COLORS.Stroke
 stroke.Parent = frame
 
 local padding = Instance.new("UIPadding")
-padding.PaddingLeft, padding.PaddingRight = UDim.new(0, 10), UDim.new(0, 10)
-padding.PaddingTop, padding.PaddingBottom = UDim.new(0, 10), UDim.new(0, 10)
+padding.PaddingLeft = UDim.new(0, 10)
+padding.PaddingRight = UDim.new(0, 10)
+padding.PaddingTop = UDim.new(0, 10)
+padding.PaddingBottom = UDim.new(0, 10)
 padding.Parent = frame
 
 local layout = Instance.new("UIListLayout")
@@ -228,13 +269,13 @@ layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Padding = UDim.new(0, 8)
 layout.Parent = frame
 
--- UI Elements
 local title = createLabel(frame, "Cronix - Flashpoint", 24, Enum.Font.GothamBold, 15, COLORS.Title)
 title.LayoutOrder = 1
 
 local disclaimer = createLabel(frame, FLASHTIME_DISCLAIMER, 30, Enum.Font.Gotham, 11, COLORS.Section)
 disclaimer.LayoutOrder = 2
 disclaimer.TextWrapped = true
+disclaimer.TextYAlignment = Enum.TextYAlignment.Top
 
 local input = createInput(frame, "Speed value (" .. MIN_RECOMMENDED_SPEED .. "-" .. MAX_RECOMMENDED_SPEED .. "):", 32)
 input.LayoutOrder = 3
@@ -245,22 +286,40 @@ saveButton.LayoutOrder = 4
 local lastSave = 0
 saveButton.MouseButton1Click:Connect(function()
 	local now = os.clock()
-	if now - lastSave < SAVE_COOLDOWN then return end
+	if now - lastSave < SAVE_COOLDOWN then
+		return
+	end
 	lastSave = now
-	
+
 	local value = parseSpeed(input.Text)
-	if not value then toast("Cronix", "Enter a number", 2) return end
-	if value < MIN_RECOMMENDED_SPEED then toast("Cronix", "Minimum speed is " .. MIN_RECOMMENDED_SPEED, 3) return end
-	if value > MAX_RECOMMENDED_SPEED then toast("DISCLAIMER", FLASHTIME_WARNING, 5) end
+	if not value then
+		toast("Cronix", "Enter a number", 2)
+		return
+	end
+
+	if value < MIN_RECOMMENDED_SPEED then
+		toast("Cronix", "Minimum speed is " .. MIN_RECOMMENDED_SPEED, 3)
+		return
+	end
+
+	if value > MAX_RECOMMENDED_SPEED then
+		toast("DISCLAIMER", FLASHTIME_WARNING, 5)
+		return
+	end
 
 	local ok, updatedCount = applyAllRebirthValues(value)
-	if ok then
-		input.Text = tostring(value)
-		toast("Cronix", updatedCount > 0 and "Saved speed: " .. value or "Speed already set", 2)
+	if not ok then
+		return
+	end
+
+	input.Text = tostring(value)
+	if updatedCount > 0 then
+		toast("Cronix", "Saved speed: " .. value, 2)
+	else
+		toast("Cronix", "Speed already set to " .. value, 2)
 	end
 end)
 
--- Dropdown Section
 local dropdownHeader = Instance.new("Frame")
 dropdownHeader.Size = UDim2.new(1, 0, 0, 28)
 dropdownHeader.BackgroundTransparency = 1
@@ -268,6 +327,7 @@ dropdownHeader.LayoutOrder = 5
 dropdownHeader.Parent = frame
 
 local dropdownButton = createButton(dropdownHeader, "Admin Abuse  ▸", 28, COLORS.Neutral)
+
 local dropdownContent = Instance.new("Frame")
 dropdownContent.Size = UDim2.new(1, 0, 0, 0)
 dropdownContent.BackgroundTransparency = 1
@@ -282,18 +342,24 @@ dropdownLayout.Parent = dropdownContent
 
 local cometButton = createButton(dropdownContent, "TP TO COMET", 32)
 cometButton.LayoutOrder = 1
-cometButton.MouseButton1Click:Connect(function() teleportToAdminAbuse("Comet", "Comet TP") end)
+cometButton.MouseButton1Click:Connect(function()
+	teleportToAdminAbuse("Comet", "Comet TP")
+end)
 
 local riftButton = createButton(dropdownContent, "TP TO VORTEX RIFT", 32)
 riftButton.LayoutOrder = 2
-riftButton.MouseButton1Click:Connect(function() teleportToAdminAbuse("Rift", "Rift TP") end)
+riftButton.MouseButton1Click:Connect(function()
+	teleportToAdminAbuse("Rift", "Rift TP")
+end)
 
 local section = createLabel(dropdownContent, "Find suit", 18, Enum.Font.GothamBold, 12, COLORS.Section)
 section.LayoutOrder = 3
 
 local suitButton = createButton(dropdownContent, "TP TO VORTEX SUIT", 32)
 suitButton.LayoutOrder = 4
-suitButton.MouseButton1Click:Connect(function() teleportToAdminAbuse("RiftsRig", "Find suit") end)
+suitButton.MouseButton1Click:Connect(function()
+	teleportToAdminAbuse("RiftsRig", "Find suit")
+end)
 
 local expanded = false
 local dropdownContentHeight = 0
@@ -309,11 +375,17 @@ dropdownLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function(
 	refreshContainerHeight()
 end)
 
-dropdownButton.MouseButton1Click:Connect(function()
-	expanded = not expanded
-	dropdownButton.Text = expanded and "Admin Abuse  ▾" or "Admin Abuse  ▸"
+local function setDropdownState(state)
+	expanded = state
+	dropdownButton.Text = expanded and "Admin Abuse  -" or "Admin Abuse  ▸"
 	refreshContainerHeight()
+end
+
+dropdownButton.MouseButton1Click:Connect(function()
+	setDropdownState(not expanded)
 end)
 
--- Cleanup & Toast
-toast("Disclaimer", "UpdateSpeed Remote has been globally blocked.", 5)
+dropdownContentHeight = dropdownLayout.AbsoluteContentSize.Y
+setDropdownState(false)
+
+toast("Disclaimer", FLASHTIME_WARNING, 5)
