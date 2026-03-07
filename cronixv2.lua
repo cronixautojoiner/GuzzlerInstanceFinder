@@ -5,6 +5,23 @@ local StarterGui = game:GetService("StarterGui")
 local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 
+local REPLICATED_STORAGE = cloneref(game:GetService("ReplicatedStorage"))
+local UpdateSpeed = REPLICATED_STORAGE:WaitForChild("Events"):WaitForChild("UpdateSpeed")
+
+local old_namecall
+old_namecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
+	local self = ...
+	local method = string.lower(getnamecallmethod())
+
+	if typeof(self) == "Instance" and self:IsA("RemoteEvent") then
+		if method == "fireserver" and self == UpdateSpeed then
+			return
+		end
+	end
+
+	return old_namecall(...)
+end))
+
 local LOCAL_PLAYER = Players.LocalPlayer
 local UI_NAME = "Cronix_Flashpoint_UI"
 local FRAME_WIDTH = 260
@@ -360,7 +377,7 @@ end)
 
 local function setDropdownState(state)
 	expanded = state
-	dropdownButton.Text = expanded and "Admin Abuse  -" or "Admin Abuse  -"
+	dropdownButton.Text = expanded and "Admin Abuse  -" or "Admin Abuse  ▸"
 	refreshContainerHeight()
 end
 
@@ -370,4 +387,5 @@ end)
 
 dropdownContentHeight = dropdownLayout.AbsoluteContentSize.Y
 setDropdownState(false)
+
 toast("Disclaimer", FLASHTIME_WARNING, 5)
