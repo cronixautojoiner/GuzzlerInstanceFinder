@@ -1,20 +1,24 @@
--- Hooking/Security Layer (Execute First)
+-- Block UpdateSpeed Remote (Engine Level Hook)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UpdateSpeed = ReplicatedStorage:WaitForChild("Events", 5):WaitForChild("UpdateSpeed", 5)
 
-local old
-if UpdateSpeed then
-    old = hookfunction(UpdateSpeed.FireServer, newcclosure(function(self, ...)
-        if self == UpdateSpeed then
-            -- This blocks the remote from firing and hides it from SimpleSpy/Loggers
-            return
-        end
-        return old(self, ...)
-    end))
-end
+local gmt = getrawmetatable(game)
+local oldNamecall = gmt.__namecall
+setreadonly(gmt, false)
+
+gmt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    -- This checks if the remote being fired is UpdateSpeed
+    if self == UpdateSpeed and (method == "FireServer" or method == "fireServer") then
+        return -- Completely drops the call; SimpleSpy won't see it
+    end
+    return oldNamecall(self, ...)
+end)
+
+setreadonly(gmt, true)
 
 -- UI and Functionality Script
-task.wait(1) -- Reduced wait for faster injection
+task.wait(1)
 
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
@@ -311,10 +315,5 @@ dropdownButton.MouseButton1Click:Connect(function()
 	refreshContainerHeight()
 end)
 
-setDropdownState = function(state) -- helper for initial state
-    expanded = state
-    refreshContainerHeight()
-end
-
-setDropdownState(false)
-toast("Disclaimer", "UpdateSpeed Remote has been blocked.", 5)
+-- Cleanup & Toast
+toast("Disclaimer", "UpdateSpeed Remote has been globally blocked.", 5)
