@@ -1,3 +1,8 @@
-Cronix Flashpoint Script:
+FLASHPOINT:
 
 loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/9cfb9b7431f95815fd7c74e8638b6bd0.lua"))()
+
+
+SIERRA MEXICO:
+
+loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/c040e5bef5241d9742dd052ffc87710f.lua"))()
